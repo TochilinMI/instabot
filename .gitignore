@@ -1,0 +1,5 @@
+.gradie
+build
+gradlew*
+.idea
+gradle

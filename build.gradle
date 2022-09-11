@@ -1,0 +1,16 @@
+apply plugin: 'java'
+apply plugin: 'application'
+
+repositories{
+        mavenCentral()
+}
+
+mainClassName = "ru.tochilinmi.App"
+
+dependencies{
+        implementation group: 'com.github.pengrad', name: 'java-telegram-bot-api', version: '6.2.0'
+        implementation group: 'org.brunocvcunha.instagram4j', name: 'instagram4j', version: '1.14'
+        implementation group: 'org.hibernate', name: 'hibernate-core', version: '6.1.3.Final', ext: 'pom'
+        implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.30'
+}
+
