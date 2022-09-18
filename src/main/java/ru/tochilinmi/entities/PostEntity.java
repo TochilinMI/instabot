@@ -1,9 +1,18 @@
-package ru.tochilinmi;
+package ru.tochilinmi.entities;
 
-public class Post{
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
+public class PostEntity {
+
+    @Id
+    @GeneratedValue
+    private int id;
+
     private String title;
     private String photo;
-    private String geo;
 
     public String getTitle() {
         return title;
@@ -21,12 +30,12 @@ public class Post{
         this.photo = photo;
     }
 
-    public String getGeo() {
-        return geo;
+    public int getId() {
+        return id;
     }
 
-    public void setGeo(String geo) {
-        this.geo = geo;
+    public void setId(int id) {
+        this.id = id;
     }
 }
 

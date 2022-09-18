@@ -5,66 +5,74 @@ import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.request.GetFile;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.GetFileResponse;
+import ru.tochilinmi.entities.PostEntity;
+import ru.tochilinmi.entities.UserEntity;
 
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
 public class App{
 	public static void main(String[] args) throws IOException {
+
+		EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("instabot");
+
 		Properties properties = new Properties();
 		properties.load(new FileInputStream("app.properties"));
-//		String TOKEN = new TelegramBot();
-
-		//пока вместо базы
-		Map<Long, User> users = new HashMap<>();
-
 		TelegramBot bot = new TelegramBot(properties.getProperty("telegram_token"));
 
 		bot.setUpdatesListener(updates -> {
-			updates.forEach(System.out::println);
-
+//			updates.forEach(update->{
+//				System.out.println(update);
+//				System.out.println("\n end message\n\n");
+//			});
+//			updates.forEach(System.out::println);
 			updates.forEach(update -> {
-//				Integer userId = update.message().from().id();
-				// В лонг так как некоторые id не помещаются в int, на php проверил
 				Long userId = update.message().from().id();
-				// проверка наличия логина и пароля
-				if (!users.containsKey(userId)){
+				EntityManager manager = entityManagerFactory.createEntityManager();
+				manager.getTransaction().begin();
+				UserEntity user = manager.find(UserEntity.class,userId);
+				if(user==null){//Проверка наличия пользователя в MongoDb
 					bot.execute(new SendMessage(
 							update.message().chat().id(),
 							"Вам необходимо прислать логин и пароль в одном предложении через пробел"
 					));
-					users.put(userId, null);
-				} else if(users.get(userId) == null){ // Запись логина и пароля
+					manager.persist(new UserEntity(update.message().from().id(), null, null));
+//					manager.getTransaction().commit();
+				} else if(user.getLogin() == null){ // Запись логина и пароля
 					String[] loginAndPassword = update.message().text().split(" ");
-					User user = new User(loginAndPassword[0], loginAndPassword[1]);
-					users.put(userId, user);
-					bot.execute(new SendMessage(
-							update.message().chat().id(),
-							"Всё работает! \n Теперь Вы можете присылать нам текст/изображение/геопозицию для"
-									+ "Инстаграм (в одном сообщении)"
+					user.setLogin(loginAndPassword[0]);
+					user.setPassword(loginAndPassword[1]);
+
+					manager.persist(user);
+					bot.execute(new SendMessage(userId,
+							"Всё работает! \nТеперь Вы можете присылать нам текст/изображение для"
+									+ " Инстаграм (в одном сообщении)"
 					));
-				} else {
-					System.out.println(update.toString());
-					Post post = new Post();
-					post.setTitle(update.message().text());
+//					manager.getTransaction().commit();
+				} else if(user.getLogin() != null && update.message().photo().length > 0){
+
 					GetFileResponse fileResponse = bot.execute( new GetFile(update.message().photo()[0].fileId()));
 					String fullPath = bot.getFullFilePath(fileResponse.file());
-					System.out.println(fullPath);
 					try{
 						HttpDownload.downloadFile(fullPath,"./images",update.message().photo()[0].fileId()+".jpg");
 					} catch(IOException e){
 						System.err.println(e.getMessage());
 					}
-					post.setPhoto(new File("./images/"+update.message().photo()[0].fileId()+".jpg").getPath());
-					users.get(userId).addPost(post);
+					PostEntity post = new PostEntity();
+					post.setTitle(update.message().caption());
+					post.setPhoto(new File("./images/" + update.message().photo()[0].fileId()+".jpg").getPath());
+					user.addPost(post);
 
-					System.out.println(users.toString());
+					manager.persist(user);
+					manager.persist(post);
 				}
+				manager.getTransaction().commit();
+				manager.close();
 			});
 
 			return UpdatesListener.CONFIRMED_UPDATES_ALL;
